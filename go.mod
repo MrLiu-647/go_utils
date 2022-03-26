@@ -1,4 +1,4 @@
-module MrLiu-647/go_utils
+module github.com/MrLiu-647/go_utils
 
 go 1.17
 
