@@ -4,27 +4,30 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/MrLiu-647/go_utils/common_utils"
 	"github.com/bytedance/gopkg/cloud/metainfo"
 	"github.com/cloudwego/kitex/client"
 	"github.com/cloudwego/kitex/pkg/endpoint"
 	"github.com/cloudwego/kitex/pkg/kerrors"
-	"strings"
-	"time"
 )
 
 const (
 	kiteXBaseRespSuccessCode = 200
-	kiteXBaseRespFailedCode = 400
-	kiteXPlaceholder = "\u200b\u200c\u200d"
-	kiteXCtxKeyBffInfo = "bff_info"
+	kiteXBaseRespFailedCode  = 400
+	kiteXPlaceholder         = "\u200b\u200c\u200d"
+	kiteXCtxKeyBffInfo       = "bff_info"
 )
 
-func MoicAPIDefaultOptions()[]client.Option {
-	return MoicAPIOptionsWithTimeout(nil,nil)
+func MoicAPIDefaultOptions() []client.Option {
+	return MoicAPIOptionsWithTimeout(nil, nil)
 }
 
 func MoicAPIOptionsWithTimeout(connectTimeout, rpcTimeout *time.Duration) []client.Option {
-	defaultOptions := []client.Option {
+	defaultOptions := []client.Option{
 		client.WithMiddleware(parseKiteXError),
 		client.WithMiddleware(fillBffInfo),
 	}
@@ -44,8 +47,20 @@ func MoicAPIOptionsWithTimeout(connectTimeout, rpcTimeout *time.Duration) []clie
 	return defaultOptions
 }
 
+func WithHostOption(options []client.Option, port int) []client.Option {
+	return append(options, LocalHostOptionWithPort(port))
+}
+
+func LocalHostOptionWithPort(port int) client.Option {
+	localHost := "127.0.0.1"
+	if !common_utils.IsMac() {
+		localHost = "host.docker.internal"
+	}
+	return client.WithHostPorts(fmt.Sprintf("%s:%d", localHost, port))
+}
+
 func fillBffInfo(next endpoint.Endpoint) endpoint.Endpoint {
-	return func(ctx context.Context, req, resp interface{})  error {
+	return func(ctx context.Context, req, resp interface{}) error {
 		bffStr := ""
 		bffInfo := ctx.Value(kiteXCtxKeyBffInfo)
 		bffBytes, err := json.Marshal(bffInfo)
@@ -53,7 +68,7 @@ func fillBffInfo(next endpoint.Endpoint) endpoint.Endpoint {
 			bffStr = string(bffBytes)
 		}
 
-		if bffStr != ""{
+		if bffStr != "" {
 			ctx = metainfo.WithValue(ctx, kiteXCtxKeyBffInfo, bffStr)
 		}
 
@@ -63,7 +78,7 @@ func fillBffInfo(next endpoint.Endpoint) endpoint.Endpoint {
 }
 
 func fillKiteXError(next endpoint.Endpoint) endpoint.Endpoint {
-	return func(ctx context.Context, req, resp interface{})  error {
+	return func(ctx context.Context, req, resp interface{}) error {
 		err := next(ctx, req, resp)
 		if err == nil {
 			return nil
@@ -76,7 +91,7 @@ func fillKiteXError(next endpoint.Endpoint) endpoint.Endpoint {
 }
 
 func parseKiteXError(next endpoint.Endpoint) endpoint.Endpoint {
-	return func(ctx context.Context, req, resp interface{})  error {
+	return func(ctx context.Context, req, resp interface{}) error {
 		err := next(ctx, req, resp)
 		if err != nil {
 			return nil
@@ -95,6 +110,6 @@ func decodeKiteXError(err error) error {
 		return err
 	}
 
-	errMsg := strings.Join(parts[1:],"")
+	errMsg := strings.Join(parts[1:], "")
 	return errors.New(errMsg)
 }
