@@ -3,8 +3,9 @@ package common_utils
 import (
 	"context"
 	"fmt"
-	"log"
 	"runtime/debug"
+
+	"github.com/MrLiu-647/go_utils/logs"
 )
 
 func SafeGo(ctx context.Context, f func()) {
@@ -12,7 +13,7 @@ func SafeGo(ctx context.Context, f func()) {
 		defer func() {
 			if err := recover(); err != nil {
 				content := fmt.Sprintf("Safe Go Capture Panic In Go Groutine\n%s", string(debug.Stack()))
-				log.Fatal(ctx, content)
+				logs.CtxError(ctx, content)
 			}
 		}()
 
